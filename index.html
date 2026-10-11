@@ -55,10 +55,10 @@ select,input[type=text],input[type=password]{width:100%;font-size:16px;padding:1
  <button class="go" id="go">Start AR</button>
  <button class="link" id="nocam">Camera-hold mode (experimental)</button>
 </div>
-<model-viewer id="mv" src="model/site.glb" camera-controls touch-action="pan-y" ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor" shadow-intensity="1" exposure="1" camera-orbit="35deg 60deg 1.5m" camera-target="0m 0.08m 0m" min-camera-orbit="auto 5deg 0.25m" max-camera-orbit="auto 88deg 3m" interaction-prompt="none"><button slot="ar-button" id="arbtn">View on my table (AR)</button></model-viewer>
+<model-viewer id="mv" src="model/site.glb" camera-controls touch-action="pan-y" ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor" shadow-intensity="0.4" exposure="1" camera-orbit="35deg 60deg 1.5m" camera-target="0m 0.08m 0m" min-camera-orbit="auto 5deg 0.25m" max-camera-orbit="auto 88deg 3m" interaction-prompt="none"><button slot="ar-button" id="arbtn">View on my table (AR)</button></model-viewer>
 <div id="hud" hidden><span id="tname"></span><span class="small" id="cnt">0 flags</span></div>
 <div id="hint" hidden></div>
-<div id="toast" hidden><span id="tt"></span><button class="b1" id="flagit">Flag it</button></div>
+<div id="toast" hidden><span id="tt"></span><span style="display:flex;gap:8px"><button class="b2" id="cancel" style="background:#475569;color:#fff">Cancel</button><button class="b1" id="flagit">Flag it</button></span></div>
 <div id="fab" hidden><div class="fr"><button class="b1" id="open">Notes</button></div></div>
 <div id="notes"><div class="nh"><b id="nt">Notes</b><button class="b2" style="border:0;border-radius:8px;padding:8px 14px;font-size:15px" id="close">Back to AR</button></div>
 <div class="nb">
@@ -115,6 +115,7 @@ $('check').onclick=()=>{if($('pin').value!=='2026'){$('result').innerHTML='<div 
 // 3D view with native AR button
 const mv=$('mv');let lastHit=null;
 $('nocam').onclick=()=>{location.href='hold.html'+(team?'?team='+team:'')};
+$('cancel').onclick=()=>{$('toast').hidden=true;lastHit=null;mv.querySelectorAll('.hs').forEach(n=>n.remove())};
 $('flagit').onclick=()=>{if(!lastHit)return;$('col').value=lastHit[0];$('row').value=lastHit[1];paintSel();$('toast').hidden=true;$('notes').classList.add('open')};
 let sx=0,sy=0,mvd=0;
 mv.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;mvd=0});
