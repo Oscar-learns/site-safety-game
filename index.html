@@ -1,0 +1,64 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Site Safety Inspection</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--ac:#f59e0b;--ok:#22c55e;--bad:#ef4444}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--tx)}
+header{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:18px;margin:0}.sub{font-size:12px;opacity:.7}
+model-viewer{width:100%;height:58vh;background:linear-gradient(#cfe3f5,#f4f1ea);--poster-color:transparent}
+.bar{display:flex;gap:8px;padding:8px 14px;flex-wrap:wrap;align-items:center}
+button,select{font-size:15px;padding:9px 12px;border-radius:8px;border:0;background:var(--ac);color:#111;font-weight:600}
+button.sec{background:#475569;color:#fff}select{background:#fff}
+.pin{width:26px;height:26px;border-radius:50%;background:var(--bad);color:#fff;border:2px solid #fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pin.ans{background:var(--ok)}.pin.dec{background:#3b82f6}
+.list{padding:0 14px 20px}.item{background:var(--card);border-radius:8px;padding:8px 10px;margin:6px 0;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.small{font-size:12px;opacity:.8}#score{font-size:20px;font-weight:700;padding:0 14px}
+.tip{padding:0 14px;font-size:13px;opacity:.85}
+</style></head><body>
+<header><div><h1>Site Safety Inspection</h1><div class="sub">Pinch to zoom · drag to rotate · tap the model to drop a flag</div></div>
+<div id="team" class="sub"></div></header>
+<model-viewer id="mv" src="model/site.glb" camera-controls touch-action="pan-y" ar ar-modes="webxr scene-viewer quick-look"
+ ar-scale="auto" shadow-intensity="1" exposure="1" camera-orbit="35deg 60deg 1.4m" camera-target="0m 0.08m 0m"
+ min-camera-orbit="auto 5deg 0.25m" max-camera-orbit="auto 88deg 2.5m" interaction-prompt="auto">
+ <button slot="ar-button" class="sec" style="position:absolute;right:10px;bottom:10px">View on my table (AR)</button>
+</model-viewer>
+<div class="bar"><select id="cat"><option>Fall</option><option>Struck-by</option><option>Caught-in/between</option><option>Electrical</option><option>Fire/Explosion</option><option>PPE</option><option>Housekeeping/Other</option></select>
+<button id="undo" class="sec">Undo last flag</button><button id="clear" class="sec">Clear all</button><button id="copy">Copy my list</button></div>
+<div class="tip">1) Choose the hazard type. 2) Tap the exact spot on the model. Flag only real hazards: false flags lose points.</div>
+<div id="score"></div>
+<div class="list" id="list"></div>
+<div class="list" id="inst" hidden><div class="bar" style="padding:0 0 8px"><button id="score_btn">Score this team</button><button id="reveal" class="sec">Reveal answers</button><button id="hide" class="sec">Hide answers</button></div>
+<div class="small">Instructor mode (add ?key=trainer to the URL). Hazard match = flag within about 5 m of the true spot (5 cm on the model) and the right type.</div></div>
+<script src="vendor/model-viewer-umd.min.js"></script>
+<script>
+const HAZ=[{"id": 1, "cat": "Fall", "title": "Open slab edge (no guardrail)", "cell": "E3", "p": [0.16, 0.105, -0.07], "what": "Top slab: the east edge has no guardrail or toe-board, while the other three edges are protected.", "fix": "Install top rail, mid rail and toe-board before anyone works near the edge."}, {"id": 2, "cat": "Fall", "title": "Worker at the edge, not clipped on", "cell": "E3", "p": [0.153, 0.124, -0.043], "what": "Worker stands right at the unprotected east edge with no harness or lanyard.", "fix": "Fit edge protection first; if work at the edge is unavoidable, harness tied to an anchor point."}, {"id": 3, "cat": "Fall", "title": "Uncovered floor opening", "cell": "D3", "p": [0.0045, 0.07, -0.0485], "what": "Hole in the level-2 slab with no cover, rail or warning. (The orange panel on the same level is a properly covered opening.)", "fix": "Cover with a secured, marked cover (or fit guardrail around it)."}, {"id": 4, "cat": "Fall", "title": "Scaffold platform gap, no edge protection", "cell": "D4", "p": [0.055, 0.074, 0.01], "what": "Top scaffold lift, bay 5: half the boards are missing, a board hangs loose, and guardrails and toe-board are missing.", "fix": "Complete boards, guardrails and toe-boards; tag the scaffold \"do not use\" until fixed."}, {"id": 5, "cat": "Fall", "title": "Unsecured, badly placed ladder", "cell": "E2", "p": [0.1, 0.018, -0.156], "what": "Ladder on the north face is too flat, stands on a pallet, is not tied, and does not extend above the landing.", "fix": "Ladder at 4:1, on firm level ground, tied off, extending 1 m above the landing."}, {"id": 6, "cat": "Struck-by", "title": "Material stacked on the slab edge", "cell": "E3", "p": [0.15, 0.115, -0.096], "what": "Pallet of bricks on the open slab edge: it can fall onto people below.", "fix": "Keep stacks away from edges; use toe-boards; keep the area below barricaded."}, {"id": 7, "cat": "Struck-by", "title": "Crane load over workers", "cell": "E5", "p": [0.17, 0.088, 0.133], "what": "Suspended steel load is slewed directly over two workers; there is no exclusion zone, tag line or signaller.", "fix": "Never work under a load; barricade the lift zone and use a signaller."}, {"id": 8, "cat": "Struck-by", "title": "Reversing loader, person in blind spot", "cell": "C6", "p": [-0.034, 0.018, 0.234], "what": "Wheel loader is reversing with a worker directly behind it and no banksman. (The dump truck at E6 has a banksman and barriers.)", "fix": "Separate people and plant; use a banksman; never stand in a machine blind spot."}, {"id": 9, "cat": "Caught-in/between", "title": "Unshored excavation with a worker inside", "cell": "A3", "p": [-0.22, -0.012, -0.02], "what": "South half of the pit has vertical walls with no shoring, no barrier and no ladder, and a worker is inside. (The north half is shored, barricaded and has a ladder.)", "fix": "Shore or batter the sides, provide a ladder, barricade the edge."}, {"id": 10, "cat": "Caught-in/between", "title": "Spoil heap at the excavation edge", "cell": "B4", "p": [-0.2, 0.024, 0.046], "what": "Excavated soil is piled on the edge of the pit, adding load and risking a collapse onto the worker.", "fix": "Keep spoil at least the depth of the excavation (or more) away from the edge."}, {"id": 11, "cat": "Electrical", "title": "Live overhead line, no warning or guard", "cell": "F4", "p": [0.24, 0.15, 0.06], "what": "Overhead power line runs through the crane and plant working area with no marker, goal-posts or isolation.", "fix": "Ask the utility to isolate or divert; set exclusion distance, goal-posts and warning signs."}, {"id": 12, "cat": "Electrical", "title": "Damaged cable in a puddle, open board", "cell": "D4", "p": [0.03, 0.006, 0.037], "what": "Cable lies across the walkway in a puddle, one end is stripped, and the distribution board door is open.", "fix": "Replace the cable, lift it off the ground, close/lock the board, use RCD protection."}, {"id": 13, "cat": "Fire/Explosion", "title": "Loose gas cylinders near welding", "cell": "A5", "p": [-0.202, 0.01, 0.16], "what": "Oxygen and acetylene cylinders lie on the ground, not secured, next to welding sparks and a wooden pallet stack, with no extinguisher. (The caged, chained cylinders near the cabin are correct.)", "fix": "Store upright, chained, apart; keep combustibles away from hot work; extinguisher at hand."}, {"id": 14, "cat": "Housekeeping/Other", "title": "Uncapped rebar ends", "cell": "C2", "p": [-0.05, 0.118, -0.14], "what": "Bare rebar sticking up from the column stubs at the north-west corner of the top slab. (The yellow-capped bars at the next columns are protected.)", "fix": "Fit rebar caps (or bend over / cover) so a fall or trip cannot impale a worker."}, {"id": 15, "cat": "PPE", "title": "No helmet or hi-vis on a live road", "cell": "A6", "p": [-0.22, 0.028, 0.256], "what": "Worker walks along the site road without a helmet or high-visibility clothing.", "fix": "Mandatory PPE for everyone on site; enforce at the gate."}, {"id": 16, "cat": "Housekeeping/Other", "title": "Debris blocking the walkway", "cell": "B5", "p": [-0.108, 0.013, 0.108], "what": "Pallets, pipes and offcuts block the marked pedestrian route and the access to the building.", "fix": "Keep walkways clear; designated storage; regular housekeeping checks."}];
+const q=new URLSearchParams(location.search);const TEAM=q.get('team')||'';const INSTR=q.get('key')==='trainer';
+if(TEAM)document.getElementById('team').textContent='Team '+TEAM;
+const mv=document.getElementById('mv'),list=document.getElementById('list');let flags=[];const KEY='flags'+TEAM;
+try{flags=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(flags))}catch(e){}}
+function cellOf(p){ // model coords (m) -> grid, 1:100, centre origin, x east, -z north
+ const x=p[0]*100+30,y=-p[2]*100+30;return 'ABCDEF'[Math.min(5,Math.max(0,Math.floor(x/10)))]+(6-Math.min(5,Math.max(0,Math.floor(y/10))))}
+function render(){
+ mv.querySelectorAll('.pin.user').forEach(e=>e.remove());
+ flags.forEach((f,i)=>{const b=document.createElement('div');b.slot='hotspot-u'+i;b.className='pin user';b.textContent=i+1;
+  b.dataset.position=f.pos;b.dataset.normal=f.nor;mv.appendChild(b)});
+ list.innerHTML=flags.map((f,i)=>`<div class="item"><span><b>${i+1}.</b> ${f.cat}</span><span class="small">${f.cell}</span></div>`).join('')||'<div class="small">No flags yet.</div>';
+ save()}
+mv.addEventListener('click',e=>{
+ const r=mv.positionAndNormalFromPoint(e.clientX,e.clientY);if(!r)return;
+ const p=[r.position.x,r.position.y,r.position.z];
+ flags.push({cat:document.getElementById('cat').value,pos:`${r.position.x}m ${r.position.y}m ${r.position.z}m`,nor:`${r.normal.x}m ${r.normal.y}m ${r.normal.z}m`,p,cell:cellOf(p)});render()});
+undo.onclick=()=>{flags.pop();render()};clear.onclick=()=>{if(confirm('Remove all flags?')){flags=[];render()}};
+copy_=document.getElementById('copy');copy_.onclick=()=>{const t=flags.map((f,i)=>`${i+1}. ${f.cat} @ ${f.cell}`).join('\n');navigator.clipboard&&navigator.clipboard.writeText(t);copy_.textContent='Copied';setTimeout(()=>copy_.textContent='Copy my list',1500)};
+if(INSTR){document.getElementById('inst').hidden=false;
+ const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+ score_btn.onclick=()=>{const used=new Set();let s=0,hit=0,fp=0,cat=0;
+  flags.forEach(f=>{let best=null,bd=1e9;HAZ.forEach(h=>{const dd=d(f.p,h.p);if(dd<bd&&!used.has(h.id)){bd=dd;best=h}});
+   if(best&&bd<0.05){used.add(best.id);hit++;s+=10;if(best.cat===f.cat){s+=5;cat++}}else{fp++;s-=5}});
+  document.getElementById('score').textContent=`Score ${s}  (found ${hit}/16, correct type ${cat}, false flags ${fp})`};
+ reveal.onclick=()=>{HAZ.forEach(h=>{const b=document.createElement('div');b.slot='hotspot-a'+h.id;b.className='pin ans';b.textContent=h.id;b.dataset.position=h.p.map(v=>v+'m').join(' ');b.dataset.normal='0m 1m 0m';mv.appendChild(b)});
+  list.innerHTML=HAZ.map(h=>`<div class="item"><span><b>${h.id}. ${h.title}</b><br><span class="small">${h.what}</span></span><span class="small">${h.cell}<br>${h.cat}</span></div>`).join('')};
+ hide.onclick=()=>{mv.querySelectorAll('.pin.ans').forEach(e=>e.remove());render()}}
+render();
+</script></body></html>
